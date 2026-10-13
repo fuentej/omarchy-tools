@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#
+# hypr-window-list - pick from a list of open Hyprland windows and focus it.
+#
+# Dependencies: hyprctl (Hyprland), jq, fzf, and a terminal to run in.
+# Recommended use: bind a key that launches this in a floating terminal.
+
+set -euo pipefail
+
+chosen=$(
+  hyprctl clients -j |
+    jq -r '[.[] | select(.mapped)] | sort_by(.workspace.id, .monitor)[] |
+      "\(.workspace.id)\t\(.class)\t\(.title)\t\(.address)"' |
+    fzf --delimiter=$'\t' --with-nth=1,2,3 \
+        --reverse --no-sort --height=100% --prompt='window> ' \
+        --header=$'ws\tapp\ttitle'
+) || true
+
+[[ -n ${chosen:-} ]] || exit 0
+
+address=${chosen##*$'\t'}
+[[ -n $address ]] || exit 0
+
+# New Lua config syntax, falling back to the legacy dispatcher.
+hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null 2>&1 ||
+  hyprctl dispatch focuswindow "address:$address" >/dev/null 2>&1
