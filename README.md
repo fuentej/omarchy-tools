@@ -26,6 +26,11 @@ cd omarchy-tools
 Individual tools list their own dependencies. Most rely on `hyprctl` (Hyprland)
 plus common CLI tools such as `fzf` and `jq`.
 
+## Troubleshooting notes
+
+Field notes on non-obvious desktop issues — input grabs, hibernation power-off,
+Wi-Fi band flapping — live in [docs/troubleshooting.md](docs/troubleshooting.md).
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
