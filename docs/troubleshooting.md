@@ -75,3 +75,23 @@ Revert with `802-11-wireless.band ""`.
 
 **Lesson.** 6 GHz has far worse range and penetration than 5 GHz; if its coverage
 isn't solid, preferring a lower band is more stable, not slower in practice.
+
+## Screensaver burns CPU while it runs
+
+**Symptom.** Fan spins up / CPU spikes whenever the Omarchy screensaver is up
+(idle auto-launch or `SUPER+CTRL+L`), settles as soon as it exits. Scales with
+how many monitors are connected.
+
+**Cause.** `omarchy-screensaver` starts `ttfx --frame-rate 120` in one
+fullscreen terminal **per monitor** — four screens means four concurrent 120fps
+animations, several cores busy for as long as idle lasts. Nothing is hung; it
+is just raw animation load.
+
+**Fix.** Patch the frame rate down to 30fps — see
+[low-cpu-screensaver](../low-cpu-screensaver/). The script is root-owned and
+`omarchy update` restores the stock copy, so pair the patch with a
+`post-update.d` hook that re-applies it.
+
+**Lesson.** "Screensaver" animations are real workloads. Per-monitor
+full-screen redraw loops multiply by display count; frame rate is the biggest
+lever, monitor count the second.

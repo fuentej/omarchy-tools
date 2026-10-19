@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# Cut the CPU load of the Omarchy screensaver.
+#
+# Stock omarchy-screensaver runs the ttfx animation at 120fps in one fullscreen
+# terminal per connected monitor. This rewrites the frame rate in place (the
+# target is root-owned, so it prompts for sudo). Safe to re-run: exits quietly
+# when the requested rate is already applied.
+
+set -euo pipefail
+
+target="/usr/share/omarchy/bin/omarchy-screensaver"
+fps="${1:-30}"
+
+case "$fps" in
+  '' | *[!0-9]*)
+    echo "Usage: low-cpu-screensaver [fps]" >&2
+    exit 2
+    ;;
+esac
+
+if [[ ! -f $target ]]; then
+  echo "error: $target not found - is Omarchy installed?" >&2
+  exit 1
+fi
+
+current=$(grep -o -- '--frame-rate [0-9]\+' "$target" | head -1 | grep -o '[0-9]\+' || true)
+
+if [[ $current == "$fps" ]]; then
+  echo "Already applied: $target runs at ${fps}fps"
+  exit 0
+fi
+
+if [[ -z $current ]]; then
+  echo "error: no --frame-rate option found in $target - Omarchy changed?" >&2
+  exit 1
+fi
+
+echo "Patching $target: frame-rate $current -> $fps (sudo password may be required)"
+sudo sed -i "s/--frame-rate [0-9]\+/$fps/" "$target"
+
+if grep -q -- "--frame-rate $fps" "$target"; then
+  echo "Applied: screensaver now runs at ${fps}fps"
+  echo "Test it with: omarchy-launch-screensaver force"
+else
+  echo "error: patch did not apply - check $target manually" >&2
+  exit 1
+fi

@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# Re-apply the low-cpu-screensaver patch after Omarchy updates.
+#
+# omarchy update restores /usr/share/omarchy from git, which brings back the
+# stock 120fps screensaver. `omarchy update` has just used sudo by the time
+# hooks run, so the timestamp is usually still cached and the re-apply is
+# silent; otherwise fall back to a notification.
+
+set -e
+
+target="/usr/share/omarchy/bin/omarchy-screensaver"
+
+grep -q -- "--frame-rate 120" "$target" 2>/dev/null || exit 0
+
+if sudo -n true 2>/dev/null; then
+  sudo sed -i 's/--frame-rate 120/--frame-rate 30/' "$target"
+  omarchy-notification-send -g 󰆍 "Screensaver patch re-applied" \
+    "Omarchy update restored the 120fps screensaver; cut back to 30fps."
+else
+  omarchy-notification-send -u critical -g 󰆍 "Screensaver patch reverted" \
+    "Omarchy update restored the 120fps screensaver. Run: low-cpu-screensaver"
+fi
