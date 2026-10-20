@@ -3,21 +3,32 @@
 # Re-apply the low-cpu-screensaver patch after Omarchy updates.
 #
 # omarchy update restores /usr/share/omarchy from git, which brings back the
-# stock 120fps screensaver. `omarchy update` has just used sudo by the time
-# hooks run, so the timestamp is usually still cached and the re-apply is
-# silent; otherwise fall back to a notification.
+# stock 120fps all-effects screensaver. `omarchy update` has just used sudo by
+# the time hooks run, so the timestamp is usually still cached and the re-apply
+# is silent; otherwise fall back to a notification.
 
 set -e
 
 target="/usr/share/omarchy/bin/omarchy-screensaver"
+tool="$HOME/.local/bin/low-cpu-screensaver"
+prefs=(15 --effects matrix binarypath rain)
 
-grep -q -- "--frame-rate 120" "$target" 2>/dev/null || exit 0
+# Stock again when the 120fps frame rate is back or the effect list is gone.
+needs_patch=false
+grep -q -- "--frame-rate 120" "$target" 2>/dev/null && needs_patch=true
+grep -q -- "--include-effects" "$target" 2>/dev/null || needs_patch=true
+$needs_patch || exit 0
 
-if sudo -n true 2>/dev/null; then
-  sudo sed -i 's/--frame-rate 120/--frame-rate 30/' "$target"
+if [[ ! -x $tool ]]; then
+  omarchy-notification-send -u critical -g 󰆍 "Screensaver patch missing" \
+    "low-cpu-screensaver is not installed at $tool."
+  exit 0
+fi
+
+if sudo -n true 2>/dev/null && "$tool" "${prefs[@]}" >/dev/null 2>&1; then
   omarchy-notification-send -g 󰆍 "Screensaver patch re-applied" \
-    "Omarchy update restored the 120fps screensaver; cut back to 30fps."
+    "Omarchy update restored the stock screensaver; back to ${prefs[0]}fps with matrix effects."
 else
   omarchy-notification-send -u critical -g 󰆍 "Screensaver patch reverted" \
-    "Omarchy update restored the 120fps screensaver. Run: low-cpu-screensaver"
+    "Omarchy update restored the stock screensaver. Run: low-cpu-screensaver ${prefs[*]}"
 fi

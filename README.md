@@ -9,7 +9,7 @@ script, installer, and README.
 | Tool | Description |
 | --- | --- |
 | [hypr-window-list](hypr-window-list/) | `fzf` picker to list and focus open Hyprland windows |
-| [low-cpu-screensaver](low-cpu-screensaver/) | Cut the Omarchy screensaver's CPU load (120fps → 30fps animation) |
+| [low-cpu-screensaver](low-cpu-screensaver/) | Cut the Omarchy screensaver's CPU load (frame rate + effect selection) |
 
 ## Installing a tool
 

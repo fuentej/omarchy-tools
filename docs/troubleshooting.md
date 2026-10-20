@@ -87,7 +87,7 @@ fullscreen terminal **per monitor** — four screens means four concurrent 120fp
 animations, several cores busy for as long as idle lasts. Nothing is hung; it
 is just raw animation load.
 
-**Fix.** Patch the frame rate down to 30fps — see
+**Fix.** Patch the frame rate down and restrict the effect list — see
 [low-cpu-screensaver](../low-cpu-screensaver/). The script is root-owned and
 `omarchy update` restores the stock copy, so pair the patch with a
 `post-update.d` hook that re-applies it.

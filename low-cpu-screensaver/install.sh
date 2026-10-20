@@ -22,7 +22,7 @@ echo "Installed post-update hook to $hooks/low-cpu-screensaver.hook"
 
 echo
 echo "Applying the patch now (may prompt for your sudo password):"
-if "$dest/low-cpu-screensaver"; then
+if "$dest/low-cpu-screensaver" "$@"; then
   :
 else
   echo "Patch not applied - run low-cpu-screensaver whenever you are ready."
