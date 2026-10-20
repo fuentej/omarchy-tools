@@ -5,7 +5,8 @@
 # Stock omarchy-screensaver runs the ttfx animation at 120fps in one fullscreen
 # terminal per connected monitor. This rewrites the frame rate in place (the
 # target is root-owned, so it prompts for sudo). Safe to re-run: exits quietly
-# when the requested rate is already applied.
+# when the requested rate is already applied, and repairs a half-patched file
+# where a bare frame count is left instead of `--frame-rate <n>`.
 
 set -euo pipefail
 
@@ -24,6 +25,15 @@ if [[ ! -f $target ]]; then
   exit 1
 fi
 
+# Repair a half-patched file: a bare frame count where `--frame-rate <n>` used
+# to be. ttfx treats that number as a subcommand, errors out, and the screensaver
+# loop respawns it forever.
+if ! grep -q -- '--frame-rate' "$target" && grep -qE '^[[:space:]]+[0-9]+ --canvas-width' "$target"; then
+  bare=$(grep -E -o '^[[:space:]]+[0-9]+ --canvas-width' "$target" | grep -o '[0-9]\+' | head -1)
+  echo "Repairing half-patched file: bare '$bare' -> '--frame-rate $bare' (sudo password may be required)"
+  sudo sed -i -E 's/^([[:space:]]+)([0-9]+)( --canvas-width)/\1--frame-rate \2\3/' "$target"
+fi
+
 current=$(grep -o -- '--frame-rate [0-9]\+' "$target" | head -1 | grep -o '[0-9]\+' || true)
 
 if [[ $current == "$fps" ]]; then
@@ -37,7 +47,7 @@ if [[ -z $current ]]; then
 fi
 
 echo "Patching $target: frame-rate $current -> $fps (sudo password may be required)"
-sudo sed -i "s/--frame-rate [0-9]\+/$fps/" "$target"
+sudo sed -i -E "s/--frame-rate [0-9]+/--frame-rate $fps/" "$target"
 
 if grep -q -- "--frame-rate $fps" "$target"; then
   echo "Applied: screensaver now runs at ${fps}fps"
