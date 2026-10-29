@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+#
+# Tune the Omarchy screensaver: frame rate and which effects may play.
+#
+# Stock omarchy-screensaver runs the ttfx animation at 120fps in one fullscreen
+# terminal per connected monitor, picking a random effect from everything ttfx
+# knows. This rewrites those choices in place (the target is root-owned, so it
+# prompts for sudo). Safe to re-run: exits quietly when the requested settings
+# are already applied, and repairs a half-patched file where a bare frame
+# count is left instead of `--frame-rate <n>`.
+
+set -euo pipefail
+
+target="/usr/share/omarchy/bin/omarchy-screensaver"
+
+usage() {
+  echo "Usage: low-cpu-screensaver [fps] [--effects <name>...]" >&2
+  echo "  fps      frame rate for ttfx (default 30)" >&2
+  echo "  --effects  restrict --random-effect to these ttfx effect names" >&2
+  exit 2
+}
+
+fps=""
+effects=()
+while (($#)); do
+  case $1 in
+    --effects)
+      shift
+      while (($#)) && [[ $1 != --* && $1 != [0-9]* ]]; do
+        effects+=("$1")
+        shift
+      done
+      ((${#effects[@]})) || usage
+      ;;
+    --help | -h)
+      usage
+      ;;
+    [0-9]*)
+      [[ -z $fps ]] || usage
+      fps=$1
+      shift
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+[[ -n $fps ]] || fps=30
+
+if [[ ! -f $target ]]; then
+  echo "error: $target not found - is Omarchy installed?" >&2
+  exit 1
+fi
+
+# A wrong effect name makes ttfx exit immediately and the screensaver loop
+# respawns it forever, so validate every name against `ttfx --help`.
+if ((${#effects[@]})) && command -v ttfx >/dev/null; then
+  help=$(ttfx --help 2>&1 || true)
+  for name in "${effects[@]}"; do
+    if ! grep -qE "^[[:space:]]+$name[[:space:]]" <<<"$help"; then
+      echo "error: unknown ttfx effect '$name' (see: ttfx --help)" >&2
+      exit 1
+    fi
+  done
+fi
+
+# Repair a half-patched file: a bare frame count where `--frame-rate <n>` used
+# to be. ttfx treats that number as a subcommand, errors out, and the screensaver
+# loop respawns it forever.
+if ! grep -q -- '--frame-rate' "$target" && grep -qE '^[[:space:]]+[0-9]+ --canvas-width' "$target"; then
+  bare=$(grep -E -o '^[[:space:]]+[0-9]+ --canvas-width' "$target" | grep -o '[0-9]\+' | head -1)
+  echo "Repairing half-patched file: bare '$bare' -> '--frame-rate $bare' (sudo password may be required)"
+  sudo sed -i -E 's/^([[:space:]]+)([0-9]+)( --canvas-width)/\1--frame-rate \2\3/' "$target"
+fi
+
+current=$(grep -o -- '--frame-rate [0-9]\+' "$target" | head -1 | grep -o '[0-9]\+' || true)
+
+if [[ -n $current && $current != "$fps" ]]; then
+  echo "Patching $target: frame-rate $current -> $fps (sudo password may be required)"
+  sudo sed -i -E "s/--frame-rate [0-9]+/--frame-rate $fps/" "$target"
+elif [[ -z $current ]]; then
+  echo "error: no --frame-rate option found in $target - Omarchy changed?" >&2
+  exit 1
+fi
+
+if ((${#effects[@]})); then
+  list="${effects[*]}"
+  current_list=$(grep -o -- '--include-effects [a-z0-9 ]*' "$target" | head -1 | sed 's/--include-effects //' || true)
+  if [[ $current_list != "$list" ]]; then
+    echo "Patching $target: effects -> $list"
+    sudo sed -i -E "s/--random-effect( --include-effects [a-z0-9 ]+)? --no-eol/--random-effect --include-effects $list --no-eol/" "$target"
+  fi
+fi
+
+if grep -q -- "--frame-rate $fps" "$target"; then
+  echo "Applied: ${fps}fps"
+  ((${#effects[@]})) && echo "Effects restricted to: ${effects[*]}"
+  echo "Test it with: omarchy-launch-screensaver force"
+else
+  echo "error: patch did not apply - check $target manually" >&2
+  exit 1
+fi

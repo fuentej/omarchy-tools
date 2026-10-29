@@ -11,7 +11,7 @@ set -e
 
 target="/usr/share/omarchy/bin/omarchy-screensaver"
 tool="$HOME/.local/bin/low-cpu-screensaver"
-prefs=(15 --effects matrix binarypath rain)
+prefs=(8 --effects matrix)
 
 # Stock again when the 120fps frame rate is back or the effect list is gone.
 needs_patch=false
@@ -27,7 +27,7 @@ fi
 
 if sudo -n true 2>/dev/null && "$tool" "${prefs[@]}" >/dev/null 2>&1; then
   omarchy-notification-send -g 󰆍 "Screensaver patch re-applied" \
-    "Omarchy update restored the stock screensaver; back to ${prefs[0]}fps with matrix effects."
+    "Omarchy update restored the stock screensaver; back to ${prefs[0]}fps with the matrix effect."
 else
   omarchy-notification-send -u critical -g 󰆍 "Screensaver patch reverted" \
     "Omarchy update restored the stock screensaver. Run: low-cpu-screensaver ${prefs[*]}"
