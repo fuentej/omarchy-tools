@@ -15,15 +15,15 @@ Two spots in a root-owned Omarchy script:
 
 ```
 /usr/share/omarchy/bin/omarchy-screensaver:
-  --frame-rate 120 → 15 (or whatever you pass)
+  --frame-rate 120 → 8 (or whatever you pass)
   --random-effect → --random-effect --include-effects <your list>
 ```
 
 `omarchy update` restores stock Omarchy files, which undoes both. The installer
 therefore also drops a post-update hook that re-applies the patch automatically
 (sudo is usually still cached right after an update) and notifies you with the
-fix command when it isn't. The shipped hook restores 15fps with
-`matrix binarypath rain` — edit its `prefs` array to taste.
+fix command when it isn't. The shipped hook restores 8fps with just `matrix` —
+edit its `prefs` array to taste.
 
 ## Requirements
 
@@ -37,7 +37,7 @@ fix command when it isn't. The shipped hook restores 15fps with
 ```sh
 git clone https://github.com/fuentej/omarchy-tools.git
 cd omarchy-tools
-./low-cpu-screensaver/install.sh 15 --effects matrix binarypath rain
+./low-cpu-screensaver/install.sh 8 --effects matrix
 ```
 
 `install.sh` copies the script to `~/.local/bin`, the hook to
@@ -48,7 +48,7 @@ your sudo password once). Any arguments go straight through to the script.
 
 ```sh
 low-cpu-screensaver                             # 30fps, effects unchanged
-low-cpu-screensaver 15                          # 15fps, effects unchanged
+low-cpu-screensaver 8                           # 8fps, effects unchanged
 low-cpu-screensaver 15 --effects matrix rain    # restrict effect selection
 low-cpu-screensaver --effects matrix            # effects only, keep frame rate
 low-cpu-screensaver 120                         # restore a higher rate on purpose
