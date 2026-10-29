@@ -17,12 +17,18 @@ Two spots in a root-owned Omarchy script:
 /usr/share/omarchy/bin/omarchy-screensaver:
   --frame-rate 120 → 8 (or whatever you pass)
   --random-effect → --random-effect --include-effects <your list>
+  or, with --rain-time:  matrix --rain-time <seconds> --no-eol
 ```
+
+The `matrix` effect normally rains for ~15s and then resolves into the
+screensaver branding text (the Omarchy logo by default). `--rain-time` runs the
+effect through its own subcommand with a huge rain time, so it stays pure rain
+and never resolves to the text.
 
 `omarchy update` restores stock Omarchy files, which undoes both. The installer
 therefore also drops a post-update hook that re-applies the patch automatically
 (sudo is usually still cached right after an update) and notifies you with the
-fix command when it isn't. The shipped hook restores 8fps with just `matrix` —
+fix command when it isn't. The shipped hook restores 8fps with pure `matrix` rain —
 edit its `prefs` array to taste.
 
 ## Requirements
@@ -37,7 +43,7 @@ edit its `prefs` array to taste.
 ```sh
 git clone https://github.com/fuentej/omarchy-tools.git
 cd omarchy-tools
-./low-cpu-screensaver/install.sh 8 --effects matrix
+./low-cpu-screensaver/install.sh 8 --effects matrix --rain-time 999999
 ```
 
 `install.sh` copies the script to `~/.local/bin`, the hook to
@@ -51,6 +57,8 @@ low-cpu-screensaver                             # 30fps, effects unchanged
 low-cpu-screensaver 8                           # 8fps, effects unchanged
 low-cpu-screensaver 15 --effects matrix rain    # restrict effect selection
 low-cpu-screensaver --effects matrix            # effects only, keep frame rate
+low-cpu-screensaver 8 --effects matrix --rain-time 999999
+                                                # pure rain, never resolves to text
 low-cpu-screensaver 120                         # restore a higher rate on purpose
 ```
 

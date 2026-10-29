@@ -11,7 +11,7 @@ set -e
 
 target="/usr/share/omarchy/bin/omarchy-screensaver"
 tool="$HOME/.local/bin/low-cpu-screensaver"
-prefs=(8 --effects matrix)
+prefs=(8 --effects matrix --rain-time 999999)
 
 # Stock again when the 120fps frame rate is back or the effect list is gone.
 needs_patch=false

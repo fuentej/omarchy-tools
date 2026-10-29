@@ -14,13 +14,16 @@ set -euo pipefail
 target="/usr/share/omarchy/bin/omarchy-screensaver"
 
 usage() {
-  echo "Usage: low-cpu-screensaver [fps] [--effects <name>...]" >&2
-  echo "  fps      frame rate for ttfx (default 30)" >&2
+  echo "Usage: low-cpu-screensaver [fps] [--effects <name>...] [--rain-time <seconds>]" >&2
+  echo "  fps        frame rate for ttfx (default 30)" >&2
   echo "  --effects  restrict --random-effect to these ttfx effect names" >&2
+  echo "  --rain-time  run one effect via its subcommand with rain this long and" >&2
+  echo "               never resolve to the input text (needs exactly one effect)" >&2
   exit 2
 }
 
 fps=""
+rain_time=""
 effects=()
 while (($#)); do
   case $1 in
@@ -31,6 +34,12 @@ while (($#)); do
         shift
       done
       ((${#effects[@]})) || usage
+      ;;
+    --rain-time)
+      shift
+      [[ ${1:-} =~ ^[0-9]+$ ]] || usage
+      rain_time=$1
+      shift
       ;;
     --help | -h)
       usage
@@ -46,6 +55,10 @@ while (($#)); do
   esac
 done
 [[ -n $fps ]] || fps=30
+if [[ -n $rain_time && ${#effects[@]} -ne 1 ]]; then
+  echo "error: --rain-time needs exactly one --effects name" >&2
+  exit 2
+fi
 
 if [[ ! -f $target ]]; then
   echo "error: $target not found - is Omarchy installed?" >&2
@@ -83,18 +96,29 @@ elif [[ -z $current ]]; then
   exit 1
 fi
 
-if ((${#effects[@]})); then
-  list="${effects[*]}"
-  current_list=$(grep -o -- '--include-effects [a-z0-9 ]*' "$target" | head -1 | sed 's/--include-effects //' || true)
-  if [[ $current_list != "$list" ]]; then
-    echo "Patching $target: effects -> $list"
-    sudo sed -i -E "s/--random-effect( --include-effects [a-z0-9 ]+)? --no-eol/--random-effect --include-effects $list --no-eol/" "$target"
+# Effect invocation: either a random pick from an include list, or a direct
+# single-effect subcommand that rains forever without resolving to the text.
+if ((${#effects[@]})) || [[ -n $rain_time ]]; then
+  if [[ -n $rain_time ]]; then
+    segment="${effects[0]} --rain-time $rain_time"
+  else
+    segment="--random-effect --include-effects ${effects[*]}"
+  fi
+  pattern='(--random-effect( --include-effects [a-z0-9 ]+)?|[a-z0-9]+ --rain-time [0-9]+) --no-eol'
+  current_seg=$(grep -oE -- "$pattern" "$target" | head -1 | sed 's/ --no-eol$//' || true)
+  if [[ $current_seg != "$segment" ]]; then
+    echo "Patching $target: effect invocation -> $segment"
+    sudo sed -i -E "s/$pattern/$segment --no-eol/" "$target"
   fi
 fi
 
-if grep -q -- "--frame-rate $fps" "$target"; then
+ok=true
+grep -q -- "--frame-rate $fps" "$target" || ok=false
+[[ -n $rain_time ]] && { grep -q -- "--rain-time $rain_time" "$target" || ok=false; }
+if $ok; then
   echo "Applied: ${fps}fps"
-  ((${#effects[@]})) && echo "Effects restricted to: ${effects[*]}"
+  [[ -n $rain_time ]] && echo "Effect: ${effects[0]} --rain-time ${rain_time} (pure rain, no logo resolve)"
+  ((${#effects[@]})) && [[ -z $rain_time ]] && echo "Effects restricted to: ${effects[*]}"
   echo "Test it with: omarchy-launch-screensaver force"
 else
   echo "error: patch did not apply - check $target manually" >&2
