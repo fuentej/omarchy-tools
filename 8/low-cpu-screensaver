@@ -98,23 +98,47 @@ fi
 
 # Effect invocation: either a random pick from an include list, or a direct
 # single-effect subcommand that rains forever without resolving to the text.
+# Global flags (--no-eol, --no-restore-cursor) must come BEFORE a subcommand -
+# after it, ttfx rejects them, dies instantly, and the screensaver respawns it
+# forever. So rewrite the whole effect line in canonical order.
 if ((${#effects[@]})) || [[ -n $rain_time ]]; then
   if [[ -n $rain_time ]]; then
-    segment="${effects[0]} --rain-time $rain_time"
+    segment="--no-eol --no-restore-cursor ${effects[0]} --rain-time $rain_time"
   else
-    segment="--random-effect --include-effects ${effects[*]}"
+    segment="--random-effect --include-effects ${effects[*]} --no-eol --no-restore-cursor"
   fi
-  pattern='(--random-effect( --include-effects [a-z0-9 ]+)?|[a-z0-9]+ --rain-time [0-9]+) --no-eol'
-  current_seg=$(grep -oE -- "$pattern" "$target" | head -1 | sed 's/ --no-eol$//' || true)
+  # Known shapes: random pick, random pick + include list, and the direct form
+  # (including the broken variant with globals after the subcommand).
+  pattern="--no-eol --no-restore-cursor [a-z0-9]+ --rain-time [0-9]+|--random-effect( --include-effects [a-z0-9 ]+)? --no-eol --no-restore-cursor|[a-z0-9]+ --rain-time [0-9]+ --no-eol --no-restore-cursor"
+  current_seg=$(grep -oE -- "$pattern" "$target" | head -1 || true)
   if [[ $current_seg != "$segment" ]]; then
+    # Dry-run the candidate invocation in a pty before touching the real file:
+    # an argument error here would make ttfx exit instantly and the screensaver
+    # respawn-loop it forever.
+    tmpin=$(mktemp)
+    printf 'X' >"$tmpin"
+    probe=$(timeout 3 script -qec "ttfx -i $tmpin --frame-rate 1 $segment" /dev/null 2>&1 || true)
+    rm -f "$tmpin"
+    if grep -qi 'error:' <<<"$probe"; then
+      echo "error: dry-run of the new invocation failed, nothing changed:" >&2
+      grep -i 'error:' <<<"$probe" | head -2 >&2
+      exit 1
+    fi
     echo "Patching $target: effect invocation -> $segment"
-    sudo sed -i -E "s/$pattern/$segment --no-eol/" "$target"
+    sudo sed -i -E "s#^([[:space:]]+)(--random-effect|--no-eol|--no-restore-cursor|[a-z0-9]+).* &\$#\1${segment} \&#" "$target"
+    after=$(grep -oE -- "$pattern" "$target" | head -1 || true)
+    if [[ $after != "$segment" ]]; then
+      echo "error: rewrite did not take effect in $target" >&2
+      exit 1
+    fi
   fi
 fi
 
 ok=true
 grep -q -- "--frame-rate $fps" "$target" || ok=false
-[[ -n $rain_time ]] && { grep -q -- "--rain-time $rain_time" "$target" || ok=false; }
+if [[ -n $rain_time ]]; then
+  grep -q -- "--no-eol --no-restore-cursor ${effects[0]} --rain-time $rain_time" "$target" || ok=false
+fi
 if $ok; then
   echo "Applied: ${fps}fps"
   [[ -n $rain_time ]] && echo "Effect: ${effects[0]} --rain-time ${rain_time} (pure rain, no logo resolve)"
