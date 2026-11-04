@@ -10,6 +10,7 @@ script, installer, and README.
 | --- | --- |
 | [hypr-window-list](hypr-window-list/) | `fzf` picker to list and focus open Hyprland windows |
 | [low-cpu-screensaver](low-cpu-screensaver/) | Cut the Omarchy screensaver's CPU load (frame rate + effect selection) |
+| [claude-code/hooks](claude-code/hooks/) | Claude Code hook that blocks secret `.env` files but allows env templates |
 
 ## Installing a tool
 
